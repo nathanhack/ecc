@@ -10,6 +10,8 @@ import (
 	"sync"
 )
 
+const bitLimit = 64
+
 func RunBSC(ctx context.Context,
 	l *linearblock.LinearBlock,
 	crossoverProbability float64, trials, threads int,
@@ -43,7 +45,9 @@ func RunBSC(ctx context.Context,
 			}
 		}
 		messageHistoryMux.Lock()
-		messageHistory[message.String()] = true
+		if message.Len() < bitLimit || message.IsZero() {
+			messageHistory[message.String()] = true
+		}
 		messageHistoryMux.Unlock()
 		return message
 	}

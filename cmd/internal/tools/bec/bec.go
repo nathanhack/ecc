@@ -11,6 +11,8 @@ import (
 	"sync"
 )
 
+const bitLimit = 64
+
 func RunBEC(ctx context.Context,
 	l *linearblock.LinearBlock,
 	percentage float64, trials, threads int,
@@ -44,7 +46,10 @@ func RunBEC(ctx context.Context,
 			}
 		}
 		messageHistoryMux.Lock()
-		messageHistory[message.String()] = true
+		//when the message is relatively small we'll keep track so we don't have dups
+		if message.Len() < bitLimit || message.IsZero() {
+			messageHistory[message.String()] = true
+		}
 		messageHistoryMux.Unlock()
 		return message
 	}
