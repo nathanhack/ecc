@@ -62,7 +62,7 @@ func (l *LinearBlock) Encode(message mat.SparseVector) (codeword mat.SparseVecto
 	codeword = mat.DOKVec(cols)
 	codeword.MulMat(message, G)
 
-	return unorderVector(codeword, l.Processing.HColumnOrder)
+	return ToNonSystematic(codeword, l.Processing.HColumnOrder)
 }
 
 //EncodeBE is encode for Binary Erasure channels
@@ -76,12 +76,12 @@ func (l *LinearBlock) EncodeBE(message mat.SparseVector) (codeword []bec.Erasure
 	return codeword
 }
 
-func unorderVector(codeword mat.SparseVector, ordering []int) mat.SparseVector {
+func ToNonSystematic(codeword mat.SparseVector, ordering []int) mat.SparseVector {
 	if len(ordering) > 0 && codeword.Len() != len(ordering) {
 		panic("vector length must equal ordering length")
 	}
-	result := mat.DOKVec(codeword.Len())
 
+	result := mat.DOKVec(codeword.Len())
 	for c, c1 := range ordering {
 		result.Set(c1, codeword.At(c))
 	}
@@ -89,12 +89,25 @@ func unorderVector(codeword mat.SparseVector, ordering []int) mat.SparseVector {
 	return result
 }
 
-func orderVector(codeword mat.SparseVector, ordering []int) mat.SparseVector {
+func ToNonSystematicBE(codeword []bec.ErasureBit, ordering []int) []bec.ErasureBit {
+	if len(ordering) > 0 && len(codeword) != len(ordering) {
+		panic("vector length must equal ordering length")
+	}
+
+	result := make([]bec.ErasureBit, len(codeword))
+	for c, c1 := range ordering {
+		result[c1] = codeword[c]
+	}
+
+	return result
+}
+
+func ToSystematic(codeword mat.SparseVector, ordering []int) mat.SparseVector {
 	if len(ordering) > 0 && codeword.Len() != len(ordering) {
 		panic("vector length must equal ordering length")
 	}
-	result := mat.DOKVec(codeword.Len())
 
+	result := mat.DOKVec(codeword.Len())
 	for c, c1 := range ordering {
 		result.Set(c, codeword.At(c1))
 	}
@@ -102,15 +115,15 @@ func orderVector(codeword mat.SparseVector, ordering []int) mat.SparseVector {
 	return result
 }
 
-func orderVectorBE(codeword []bec.ErasureBit, ordering []int) []bec.ErasureBit {
+func ToSystematicBE(codeword []bec.ErasureBit, ordering []int) []bec.ErasureBit {
 	if len(ordering) == 0 {
 		panic("ordering length must be >0")
 	}
 	if len(ordering) > 0 && len(codeword) != len(ordering) {
 		panic("vector length must equal ordering length")
 	}
-	result := make([]bec.ErasureBit, len(codeword))
 
+	result := make([]bec.ErasureBit, len(codeword))
 	for c, c1 := range ordering {
 		result[c] = codeword[c1]
 	}
@@ -126,7 +139,7 @@ func (l *LinearBlock) Decode(codeword mat.SparseVector) (message mat.SparseVecto
 
 	ml := l.MessageLength()
 
-	codeword = orderVector(codeword, l.Processing.HColumnOrder)
+	codeword = ToSystematic(codeword, l.Processing.HColumnOrder)
 	return codeword.Slice(0, ml)
 }
 
@@ -137,7 +150,7 @@ func (l *LinearBlock) DecodeBE(codeword []bec.ErasureBit) (message []bec.Erasure
 
 	ml := l.MessageLength()
 
-	codeword = orderVectorBE(codeword, l.Processing.HColumnOrder)
+	codeword = ToSystematicBE(codeword, l.Processing.HColumnOrder)
 	return codeword[0:ml]
 }
 

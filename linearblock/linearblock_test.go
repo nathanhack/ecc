@@ -21,9 +21,9 @@ func TestOrderUnorderVector(t *testing.T) {
 		columns[j] = tmp
 	})
 
-	swapped := orderVector(vec, columns)
+	swapped := ToSystematic(vec, columns)
 
-	actual := unorderVector(swapped, columns)
+	actual := ToNonSystematic(swapped, columns)
 
 	if !reflect.DeepEqual(vec, actual) {
 		t.Fatalf("expected %v but found %v", vec, actual)
