@@ -111,7 +111,7 @@ func runSimulation(ctx context.Context, data *tools.SimulationStats, ecc *linear
 		numberOfThread = runtime.NumCPU()
 	}
 
-	trialsPerIter := numberOfThread * 10
+	trialsPerIter := numberOfThread
 	bar := pb.StartNew(int(Trials) * len(ErrorProbability))
 trialLoops:
 	for t := 0; t <= int(Trials); t += trialsPerIter {

@@ -9,7 +9,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.12 // indirect
 	github.com/nathanhack/avgstd v0.0.0-20210531154130-989d51af96a2
 	github.com/nathanhack/intmat v0.0.0-20210228003141-935751eb5e16
-	github.com/nathanhack/sparsemat v0.0.0-20210707154153-866acabf5d96
+	github.com/nathanhack/sparsemat v0.0.0-20210717173404-9f64a43cf6f1
 	github.com/nathanhack/threadpool v0.0.0-20210629001431-9d0d768b0f6d
 	github.com/onsi/ginkgo v1.14.1 // indirect
 	github.com/onsi/gomega v1.10.2 // indirect
