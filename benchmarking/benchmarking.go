@@ -121,6 +121,11 @@ func BenchmarkBSCContinueStats(ctx context.Context,
 	if showProgress {
 		bar.Finish()
 	}
+
+	if checkpoints != nil {
+		checkpoints(previousStats) //give them the updated checkpoint
+	}
+
 	return previousStats
 }
 
@@ -197,6 +202,11 @@ func BenchmarkBECContinueStats(
 	if showProgressBar {
 		bar.Finish()
 	}
+
+	if checkpoints != nil {
+		checkpoints(previousStats) //give them the updated checkpoint
+	}
+
 	return previousStats
 }
 
@@ -270,6 +280,11 @@ func BenchmarkBPSKContinueStats(ctx context.Context,
 	if showProgress {
 		bar.Finish()
 	}
+
+	if checkpoints != nil {
+		checkpoints(previousStats) //give them the updated checkpoint
+	}
+
 	return previousStats
 }
 
