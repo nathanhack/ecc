@@ -6,7 +6,7 @@ import (
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "errorcorrectingcodes",
+	Use:   "ecc",
 	Short: "A suite of tools for ECCs",
 	Long:  `A suite of tools for ECCs`,
 }

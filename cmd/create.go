@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"github.com/nathanhack/errorcorrectingcodes/cmd/internal/create/gallager"
-	"github.com/nathanhack/errorcorrectingcodes/cmd/internal/create/hamming"
+	"github.com/nathanhack/ecc/cmd/internal/create/gallager"
+	"github.com/nathanhack/ecc/cmd/internal/create/hamming"
 	"github.com/spf13/cobra"
 )
 
@@ -40,7 +40,7 @@ var createGallagerCmd = &cobra.Command{
 	Run:     gallager.GallagerRun,
 }
 
-//createHammingCmd represents the Hamming command
+// createHammingCmd represents the Hamming command
 var createHammingCmd = &cobra.Command{
 	Use:     "hamming OUTPUT_HAMMING_JSON",
 	Aliases: []string{"h", "ham"},

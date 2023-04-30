@@ -1,4 +1,4 @@
-# errorcorrectingcodes
+# ecc
 Is a simple Golang library containing error correcting codes.
 
 #### Road map:

@@ -3,14 +3,15 @@ package benchmarking
 import (
 	"context"
 	"fmt"
+	"math"
+	"sync"
+
 	"github.com/cheggaaa/pb/v3"
 	"github.com/nathanhack/avgstd"
-	"github.com/nathanhack/errorcorrectingcodes/linearblock/messagepassing/bec"
+	"github.com/nathanhack/ecc/linearblock/messagepassing/bec"
 	mat "github.com/nathanhack/sparsemat"
 	"github.com/nathanhack/threadpool"
 	mat2 "gonum.org/v1/gonum/mat"
-	"math"
-	"sync"
 )
 
 type Stats struct {
@@ -31,19 +32,19 @@ type Checkpoints func(updatedStats Stats)
 
 type BinaryMessageConstructor func(trial int) (message mat.SparseVector)
 
-//specfic to BSC
+// specfic to BSC
 type BinarySymmetricChannelEncoder func(message mat.SparseVector) (codeword mat.SparseVector)
 type BinarySymmetricChannel func(codeword mat.SparseVector) (channelInducedCodeword mat.SparseVector)
 type BinarySymmetricChannelCorrection func(originalCodeword, channelInducedCodeword mat.SparseVector) (fixedChannelInducedCodeword mat.SparseVector)
 type BinarySymmetricChannelMetrics func(originalMessage, originalCodeword, fixedChannelInducedCodeword mat.SparseVector) (percentFixedCodewordErrors, percentFixedMessageErrors, percentFixedParityErrors float64)
 
-//specific to BEC
+// specific to BEC
 type BinaryErasureChannelEncoder func(message mat.SparseVector) (codeword []bec.ErasureBit)
 type BinaryErasureChannel func(codeword []bec.ErasureBit) (channelInducedCodeword []bec.ErasureBit)
 type BinaryErasureChannelCorrection func(originalCodeword, channelInducedCodeword []bec.ErasureBit) (fixedChannelInducedCodeword []bec.ErasureBit)
 type BinaryErasureChannelMetrics func(originalMessage mat.SparseVector, originalCodeword, fixedChannelInducedCodeword []bec.ErasureBit) (percentFixedCodewordErrors, percentFixedMessageErrors, percentFixedParityErrors float64)
 
-//specific to BPSK
+// specific to BPSK
 type BPSKChannelEncoder func(message mat.SparseVector) (codeword mat2.Vector)
 type BPSKChannel func(codeword mat2.Vector) (channelInducedCodeword mat2.Vector)
 type BPSKChannelCorrection func(originalCodeword, channelInducedCodeword mat2.Vector) (fixedChannelInducedCodeword mat2.Vector)
@@ -71,7 +72,7 @@ func BenchmarkBSCContinueStats(ctx context.Context,
 	checkpoints Checkpoints,
 	previousStats Stats,
 	showProgress bool) Stats {
-	trialsToRun := trials - previousStats.ChannelCodewordError.Count
+	trialsToRun := trials - int(previousStats.ChannelCodewordError.Count)
 	if trialsToRun <= 0 {
 		return previousStats
 	}
@@ -113,7 +114,7 @@ func BenchmarkBSCContinueStats(ctx context.Context,
 		statsMux.Unlock()
 	}
 
-	for i := previousStats.ChannelCodewordError.Count; i < trials; i++ {
+	for i := int(previousStats.ChannelCodewordError.Count); i < trials; i++ {
 		tmp := i
 		pool.Add(func() { trial(tmp) })
 	}
@@ -151,7 +152,7 @@ func BenchmarkBECContinueStats(
 	checkpoints Checkpoints,
 	previousStats Stats,
 	showProgressBar bool) Stats {
-	trialsToRun := trials - previousStats.ChannelCodewordError.Count
+	trialsToRun := trials - int(previousStats.ChannelCodewordError.Count)
 	if trialsToRun <= 0 {
 		return previousStats
 	}
@@ -194,7 +195,7 @@ func BenchmarkBECContinueStats(
 		statsMux.Unlock()
 	}
 
-	for i := previousStats.ChannelCodewordError.Count; i < trials; i++ {
+	for i := int(previousStats.ChannelCodewordError.Count); i < trials; i++ {
 		pool.Add(func() { trial(i) })
 	}
 
@@ -231,7 +232,7 @@ func BenchmarkBPSKContinueStats(ctx context.Context,
 	checkpoints Checkpoints,
 	previousStats Stats,
 	showProgress bool) Stats {
-	trialsToRun := trials - previousStats.ChannelCodewordError.Count
+	trialsToRun := trials - int(previousStats.ChannelCodewordError.Count)
 	if trialsToRun <= 0 {
 		return previousStats
 	}
@@ -273,7 +274,7 @@ func BenchmarkBPSKContinueStats(ctx context.Context,
 		statsMux.Unlock()
 	}
 
-	for i := previousStats.ChannelCodewordError.Count; i < trials; i++ {
+	for i := int(previousStats.ChannelCodewordError.Count); i < trials; i++ {
 		pool.Add(func() { trial(i) })
 	}
 	pool.Wait()
@@ -288,7 +289,7 @@ func BenchmarkBPSKContinueStats(ctx context.Context,
 	return previousStats
 }
 
-//HammingDistanceErasuresToBits calculates number of bits different.
+// HammingDistanceErasuresToBits calculates number of bits different.
 // If a and b are different sizes it assumes they are
 // both aligned with the zero index (the difference is at the end)
 func HammingDistanceErasuresToBits(a []bec.ErasureBit, b mat.SparseVector) int {
@@ -308,7 +309,7 @@ func HammingDistanceErasuresToBits(a []bec.ErasureBit, b mat.SparseVector) int {
 	return max - min + count
 }
 
-//BitsToBPSK converts a [0,1] matrix to a [-1,1] matrix
+// BitsToBPSK converts a [0,1] matrix to a [-1,1] matrix
 func BitsToBPSK(a mat.SparseVector) mat2.Vector {
 	output := mat2.NewVecDense(a.Len(), nil)
 
@@ -323,7 +324,7 @@ func BitsToBPSK(a mat.SparseVector) mat2.Vector {
 	return output
 }
 
-//BPSKToBits conversts a BPSK vector [-1,1] to sparse vector [0,1].
+// BPSKToBits conversts a BPSK vector [-1,1] to sparse vector [0,1].
 // Values >= boundary will be considered a 1, otherwise a 0.
 func BPSKToBits(a mat2.Vector, boundary float64) mat.SparseVector {
 	result := mat.CSRVec(a.Len())
@@ -336,7 +337,7 @@ func BPSKToBits(a mat2.Vector, boundary float64) mat.SparseVector {
 	return result
 }
 
-//HammingDistanceBPSK calculates number of bits different.
+// HammingDistanceBPSK calculates number of bits different.
 // Assumes >=0 is 1 and <0 is 0
 // If a and b are different sizes it assumes they are
 // both aligned with the zero index (the difference is at the end)
@@ -359,7 +360,7 @@ func HammingDistanceBPSK(a, b mat2.Vector) int {
 	return max - min + count
 }
 
-//BitsToErased creates a slice of ErasureBits from the codeword passed in
+// BitsToErased creates a slice of ErasureBits from the codeword passed in
 func BitsToErased(codeword mat.SparseVector) []bec.ErasureBit {
 	output := make([]bec.ErasureBit, codeword.Len())
 	for i := 0; i < codeword.Len(); i++ {
@@ -368,7 +369,7 @@ func BitsToErased(codeword mat.SparseVector) []bec.ErasureBit {
 	return output
 }
 
-//ErasedCount returns the number of erased bits
+// ErasedCount returns the number of erased bits
 func ErasedCount(base []bec.ErasureBit) (count int) {
 	for _, e := range base {
 		if e == bec.Erased {

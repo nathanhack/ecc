@@ -3,20 +3,21 @@ package dwbf
 import (
 	"context"
 	"fmt"
-	"github.com/cheggaaa/pb/v3"
-	"github.com/nathanhack/errorcorrectingcodes/benchmarking"
-	"github.com/nathanhack/errorcorrectingcodes/cmd/internal/tools"
-	"github.com/nathanhack/errorcorrectingcodes/cmd/internal/tools/bsc"
-	"github.com/nathanhack/errorcorrectingcodes/linearblock"
-	"github.com/nathanhack/errorcorrectingcodes/linearblock/messagepassing/bitflipping/harddecision"
-	mat "github.com/nathanhack/sparsemat"
-	"github.com/spf13/cobra"
 	"os"
 	"os/signal"
 	"reflect"
 	"runtime"
 	"sync"
 	"syscall"
+
+	"github.com/cheggaaa/pb/v3"
+	"github.com/nathanhack/ecc/benchmarking"
+	"github.com/nathanhack/ecc/cmd/internal/tools"
+	"github.com/nathanhack/ecc/cmd/internal/tools/bsc"
+	"github.com/nathanhack/ecc/linearblock"
+	"github.com/nathanhack/ecc/linearblock/messagepassing/bitflipping/harddecision"
+	mat "github.com/nathanhack/sparsemat"
+	"github.com/spf13/cobra"
 )
 
 var (

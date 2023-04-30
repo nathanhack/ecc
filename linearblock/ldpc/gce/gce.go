@@ -3,18 +3,19 @@ package gce
 import (
 	"context"
 	"fmt"
+	"sort"
+
 	"github.com/cheggaaa/pb/v3"
-	"github.com/nathanhack/errorcorrectingcodes/linearblock"
-	"github.com/nathanhack/errorcorrectingcodes/linearblock/internal"
+	"github.com/nathanhack/ecc/linearblock"
+	"github.com/nathanhack/ecc/linearblock/internal"
 	mat "github.com/nathanhack/sparsemat"
 	"github.com/sirupsen/logrus"
-	"sort"
 )
 
 // Based on the paper Constructing LDPC Codes with Any Desired Girth
 //    by Chaohui Gao, Sen Liu, Dong Jiang, and Lijun Chen
 
-//Search attempts to find a GCE parity matrix for the given checkNodes, variableNodes and girth in the given number of iterations.
+// Search attempts to find a GCE parity matrix for the given checkNodes, variableNodes and girth in the given number of iterations.
 // Threads if zero will use all current CPUs in parallel. There are cases when force would need to be used and the user is notified through logrus info messages.
 // Lastly when it takes more than one iteration, then checkpoints can but used to save progress instead of waiting until the end.
 func Search(ctx context.Context, checkNodes, variableNodes, girth, iterations, threads int, force bool, checkpoint func(currentBest *linearblock.LinearBlock)) (*linearblock.LinearBlock, error) {
@@ -86,7 +87,7 @@ iterLoop:
 			}
 			best = state
 			bestCopy = tmpCopy
-			
+
 			if checkpoint != nil {
 				checkpoint(best.lb)
 			}

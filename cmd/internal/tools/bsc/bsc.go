@@ -2,12 +2,13 @@ package bsc
 
 import (
 	"context"
-	"github.com/nathanhack/errorcorrectingcodes/benchmarking"
-	"github.com/nathanhack/errorcorrectingcodes/linearblock"
-	mat "github.com/nathanhack/sparsemat"
 	"math"
 	"math/rand"
 	"sync"
+
+	"github.com/nathanhack/ecc/benchmarking"
+	"github.com/nathanhack/ecc/linearblock"
+	mat "github.com/nathanhack/sparsemat"
 )
 
 const bitLimit = 64

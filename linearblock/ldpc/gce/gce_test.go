@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/nathanhack/errorcorrectingcodes/linearblock"
-	"github.com/nathanhack/errorcorrectingcodes/linearblock/internal"
+	"github.com/nathanhack/ecc/linearblock"
+	"github.com/nathanhack/ecc/linearblock/internal"
 )
 
 func TestGeneral(t *testing.T) {

@@ -4,16 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/nathanhack/errorcorrectingcodes/linearblock"
-	"github.com/nathanhack/errorcorrectingcodes/linearblock/ldpc/gce"
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
 	"io/ioutil"
 	"math/rand"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/nathanhack/ecc/linearblock"
+	"github.com/nathanhack/ecc/linearblock/ldpc/gce"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 )
 
 var MessageSize uint

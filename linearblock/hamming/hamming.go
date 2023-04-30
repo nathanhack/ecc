@@ -3,12 +3,13 @@ package hamming
 import (
 	"context"
 	"fmt"
-	"github.com/nathanhack/errorcorrectingcodes/linearblock"
-	"github.com/nathanhack/errorcorrectingcodes/linearblock/internal"
+
+	"github.com/nathanhack/ecc/linearblock"
+	"github.com/nathanhack/ecc/linearblock/internal"
 	mat "github.com/nathanhack/sparsemat"
 )
 
-//New creates the systematic hamming code with paritySymbols number of parity symbols.
+// New creates the systematic hamming code with paritySymbols number of parity symbols.
 // Hamming codes can detect up to two-bit errors or correct one-bit errors without
 // detection of uncorrected errors.
 func New(ctx context.Context, paritySymbols int, threads int) (*linearblock.LinearBlock, error) {

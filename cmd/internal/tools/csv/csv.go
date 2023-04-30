@@ -3,12 +3,13 @@ package csv
 import (
 	"encoding/csv"
 	"fmt"
-	"github.com/nathanhack/errorcorrectingcodes/cmd/internal/tools"
-	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/nathanhack/ecc/cmd/internal/tools"
+	"github.com/spf13/cobra"
 )
 
 var OutputFile string

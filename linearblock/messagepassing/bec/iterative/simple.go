@@ -1,7 +1,7 @@
 package iterative
 
 import (
-	"github.com/nathanhack/errorcorrectingcodes/linearblock/messagepassing/bec"
+	"github.com/nathanhack/ecc/linearblock/messagepassing/bec"
 	mat "github.com/nathanhack/sparsemat"
 )
 

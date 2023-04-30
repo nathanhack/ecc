@@ -1,4 +1,4 @@
-module github.com/nathanhack/errorcorrectingcodes
+module github.com/nathanhack/ecc
 
 go 1.14
 

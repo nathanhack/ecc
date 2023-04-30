@@ -3,10 +3,11 @@ package linearblock
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/nathanhack/errorcorrectingcodes/linearblock/internal"
-	"github.com/nathanhack/errorcorrectingcodes/linearblock/messagepassing/bec"
-	mat "github.com/nathanhack/sparsemat"
 	"strings"
+
+	"github.com/nathanhack/ecc/linearblock/internal"
+	"github.com/nathanhack/ecc/linearblock/messagepassing/bec"
+	mat "github.com/nathanhack/sparsemat"
 )
 
 type Systemic struct {
@@ -14,13 +15,13 @@ type Systemic struct {
 	G            mat.SparseMat
 }
 
-//LinearBlock contains matrices for the original H matrix and the systemic G generator.
+// LinearBlock contains matrices for the original H matrix and the systemic G generator.
 type LinearBlock struct {
 	H          mat.SparseMat //the original H(parity) matrix
 	Processing *Systemic     // contains systemic generator matrix
 }
 
-//// For JSON unmarshalling
+// // For JSON unmarshalling
 type systemic struct {
 	HColumnOrder []int
 	G            mat.CSRMatrix
@@ -30,7 +31,7 @@ type linearblock struct {
 	Processing *systemic
 }
 
-//UnmarshalJSON is needed because LinearBlock has a mat.SparseMat and requires special handling
+// UnmarshalJSON is needed because LinearBlock has a mat.SparseMat and requires special handling
 func (l *LinearBlock) UnmarshalJSON(bytes []byte) error {
 	var lb linearblock
 	err := json.Unmarshal(bytes, &lb)
@@ -51,7 +52,7 @@ func (l *LinearBlock) UnmarshalJSON(bytes []byte) error {
 	return nil
 }
 
-//Encode take in a message and encodes it using the linear block, returning a codeword
+// Encode take in a message and encodes it using the linear block, returning a codeword
 func (l *LinearBlock) Encode(message mat.SparseVector) (codeword mat.SparseVector) {
 	G := l.Processing.G
 	rows, cols := G.Dims()
@@ -65,7 +66,7 @@ func (l *LinearBlock) Encode(message mat.SparseVector) (codeword mat.SparseVecto
 	return ToNonSystematic(codeword, l.Processing.HColumnOrder)
 }
 
-//EncodeBE is encode for Binary Erasure channels
+// EncodeBE is encode for Binary Erasure channels
 func (l *LinearBlock) EncodeBE(message mat.SparseVector) (codeword []bec.ErasureBit) {
 	tmp := l.Encode(message)
 
@@ -76,7 +77,7 @@ func (l *LinearBlock) EncodeBE(message mat.SparseVector) (codeword []bec.Erasure
 	return codeword
 }
 
-//Decode takes in a codeword and returns the message contained in it
+// Decode takes in a codeword and returns the message contained in it
 func (l *LinearBlock) Decode(codeword mat.SparseVector) (message mat.SparseVector) {
 	if codeword.Len() != l.CodewordLength() {
 		panic(fmt.Sprintf("codeword length == %v required but found %v", l.CodewordLength(), codeword.Len()))
@@ -121,7 +122,7 @@ func (l *LinearBlock) CodeRate() float64 {
 	return float64(l.MessageLength()) / float64(l.CodewordLength())
 }
 
-//Validate will test if this linearblock satisfies G*H.T=0, where G is the generator matrix and H.T is the transpose of H
+// Validate will test if this linearblock satisfies G*H.T=0, where G is the generator matrix and H.T is the transpose of H
 func (l *LinearBlock) Validate() bool {
 	//now we validate it
 	return internal.ValidateHGMatrices(l.Processing.G, internal.ColumnSwapped(l.H, l.Processing.HColumnOrder))
@@ -138,7 +139,7 @@ func (l *LinearBlock) String() string {
 	return buf.String()
 }
 
-//ToNonSystematic take in a systematic codeword and the ordering, it returns the nonsystematic form of it
+// ToNonSystematic take in a systematic codeword and the ordering, it returns the nonsystematic form of it
 func ToNonSystematic(codeword mat.SparseVector, ordering []int) mat.SparseVector {
 	if len(ordering) > 0 && codeword.Len() != len(ordering) {
 		panic("vector length must equal ordering length")
@@ -152,7 +153,7 @@ func ToNonSystematic(codeword mat.SparseVector, ordering []int) mat.SparseVector
 	return result
 }
 
-//ToNonSystematicBE take in a systematic codeword and the ordering, it returns the nonsystematic form of it
+// ToNonSystematicBE take in a systematic codeword and the ordering, it returns the nonsystematic form of it
 func ToNonSystematicBE(codeword []bec.ErasureBit, ordering []int) []bec.ErasureBit {
 	if len(ordering) > 0 && len(codeword) != len(ordering) {
 		panic("vector length must equal ordering length")
@@ -166,7 +167,7 @@ func ToNonSystematicBE(codeword []bec.ErasureBit, ordering []int) []bec.ErasureB
 	return result
 }
 
-//ToSystematic take in a nonsystematic codeword and the ordering, it returns the systematic form
+// ToSystematic take in a nonsystematic codeword and the ordering, it returns the systematic form
 func ToSystematic(codeword mat.SparseVector, ordering []int) mat.SparseVector {
 	if len(ordering) > 0 && codeword.Len() != len(ordering) {
 		panic("vector length must equal ordering length")
@@ -180,7 +181,7 @@ func ToSystematic(codeword mat.SparseVector, ordering []int) mat.SparseVector {
 	return result
 }
 
-//ToSystematicBE take in a nonsystematic codeword and the ordering, it returns the systematic form
+// ToSystematicBE take in a nonsystematic codeword and the ordering, it returns the systematic form
 func ToSystematicBE(codeword []bec.ErasureBit, ordering []int) []bec.ErasureBit {
 	if len(ordering) == 0 {
 		panic("ordering length must be >0")
@@ -197,14 +198,14 @@ func ToSystematicBE(codeword []bec.ErasureBit, ordering []int) []bec.ErasureBit 
 	return result
 }
 
-//NonsystematicSplit takes in a nonsystematic codeword and the linearblock, it returns the message and parity bits
+// NonsystematicSplit takes in a nonsystematic codeword and the linearblock, it returns the message and parity bits
 func NonsystematicSplit(codeword mat.SparseVector, block *LinearBlock) (message, parity mat.SparseVector) {
 	systematic := ToSystematic(codeword, block.Processing.HColumnOrder)
 
 	return SystematicSplit(systematic, block)
 }
 
-//SystematicSplit takes in a systematic codeword and splits it into the message and parity bits
+// SystematicSplit takes in a systematic codeword and splits it into the message and parity bits
 func SystematicSplit(codeword mat.SparseVector, block *LinearBlock) (message, parity mat.SparseVector) {
 	if codeword.Len() != block.CodewordLength() {
 		panic("codeword length must block's codeword length")
@@ -212,14 +213,14 @@ func SystematicSplit(codeword mat.SparseVector, block *LinearBlock) (message, pa
 	return codeword.Slice(0, block.MessageLength()), codeword.Slice(block.MessageLength(), block.ParitySymbols())
 }
 
-//NonsystematicBESplit takes in a nonsystematic codeword and splits it into the message and parity bits
+// NonsystematicBESplit takes in a nonsystematic codeword and splits it into the message and parity bits
 func NonsystematicBESplit(codeword []bec.ErasureBit, block *LinearBlock) (message, parity []bec.ErasureBit) {
 	systematic := ToSystematicBE(codeword, block.Processing.HColumnOrder)
 
 	return SystematicBESplit(systematic, block)
 }
 
-//SystematicBESplit takes in a systematic codeword and splits it into the message and parity bits
+// SystematicBESplit takes in a systematic codeword and splits it into the message and parity bits
 func SystematicBESplit(codeword []bec.ErasureBit, block *LinearBlock) (message, parity []bec.ErasureBit) {
 	if len(codeword) != block.CodewordLength() {
 		panic("codeword length must block's codeword length")

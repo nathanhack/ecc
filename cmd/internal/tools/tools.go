@@ -4,12 +4,13 @@ import (
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
-	"github.com/nathanhack/errorcorrectingcodes/benchmarking"
-	"github.com/nathanhack/errorcorrectingcodes/linearblock"
-	mat "github.com/nathanhack/sparsemat"
 	"io/ioutil"
 	"os"
 	"strconv"
+
+	"github.com/nathanhack/ecc/benchmarking"
+	"github.com/nathanhack/ecc/linearblock"
+	mat "github.com/nathanhack/sparsemat"
 )
 
 type SimulationStats struct {

@@ -2,7 +2,7 @@ package harddecision
 
 import (
 	"context"
-	"github.com/nathanhack/errorcorrectingcodes/linearblock/hamming"
+	"github.com/nathanhack/ecc/linearblock/hamming"
 	mat "github.com/nathanhack/sparsemat"
 	"strconv"
 	"testing"

@@ -1,10 +1,10 @@
 package cmd
 
 import (
-	"github.com/nathanhack/errorcorrectingcodes/cmd/internal/tools/bec/simple"
-	"github.com/nathanhack/errorcorrectingcodes/cmd/internal/tools/bsc/dwbf"
-	"github.com/nathanhack/errorcorrectingcodes/cmd/internal/tools/bsc/gallager"
-	"github.com/nathanhack/errorcorrectingcodes/cmd/internal/tools/csv"
+	"github.com/nathanhack/ecc/cmd/internal/tools/bec/simple"
+	"github.com/nathanhack/ecc/cmd/internal/tools/bsc/dwbf"
+	"github.com/nathanhack/ecc/cmd/internal/tools/bsc/gallager"
+	"github.com/nathanhack/ecc/cmd/internal/tools/csv"
 
 	"github.com/spf13/cobra"
 )
@@ -82,7 +82,7 @@ var toolsResultsCmd = &cobra.Command{
 	Long:    `A tool to organize results for graphing and comparison`,
 }
 
-//toolsCSVCmd represents the csv command
+// toolsCSVCmd represents the csv command
 var toolsCSVCmd = &cobra.Command{
 	Use:     "csv RESULTS_JSON [RESULTS_JSON] ...",
 	Aliases: []string{"c"},

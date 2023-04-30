@@ -3,14 +3,15 @@ package gallager
 import (
 	"context"
 	"fmt"
-	"github.com/nathanhack/errorcorrectingcodes/linearblock"
-	"github.com/nathanhack/errorcorrectingcodes/linearblock/internal"
+	"math/rand"
+
+	"github.com/nathanhack/ecc/linearblock"
+	"github.com/nathanhack/ecc/linearblock/internal"
 	mat "github.com/nathanhack/sparsemat"
 	"github.com/sirupsen/logrus"
-	"math/rand"
 )
 
-//GallagerRateInput takes in the message input size in bits (m), the column weight (wc), and row weight (wr)
+// GallagerRateInput takes in the message input size in bits (m), the column weight (wc), and row weight (wr)
 func Search(ctx context.Context, m, wc, wr, smallestCycleAllowed, maxIter, threads int) (lb *linearblock.LinearBlock, err error) {
 	if 3 > wc {
 		return nil, fmt.Errorf("wc must be greater than or equal to 3")

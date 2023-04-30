@@ -2,13 +2,14 @@ package bec
 
 import (
 	"context"
-	"github.com/nathanhack/errorcorrectingcodes/benchmarking"
-	"github.com/nathanhack/errorcorrectingcodes/linearblock"
-	"github.com/nathanhack/errorcorrectingcodes/linearblock/messagepassing/bec"
-	mat "github.com/nathanhack/sparsemat"
 	"math"
 	"math/rand"
 	"sync"
+
+	"github.com/nathanhack/ecc/benchmarking"
+	"github.com/nathanhack/ecc/linearblock"
+	"github.com/nathanhack/ecc/linearblock/messagepassing/bec"
+	mat "github.com/nathanhack/sparsemat"
 )
 
 const bitLimit = 64
