@@ -63,6 +63,11 @@ var GCERun = func(cmd *cobra.Command, args []string) {
 	}
 
 	checkNodes := CodewordSize - MessageSize
+	if checkNodes <= 0 {
+		fmt.Println("required MessageSize > CodewordSize")
+		return
+	}
+
 	g, err := gce.Search(ctx, int(checkNodes), int(CodewordSize), int(Girth), int(Iter), int(Threads), Force, checkpoint)
 	if err != nil {
 		fmt.Println("Unable to create LDPC: ", err)
