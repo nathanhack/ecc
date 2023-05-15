@@ -32,3 +32,12 @@ func TestGeneral(t *testing.T) {
 		t.Fatalf("expected checkpoint to be true")
 	}
 }
+
+func BenchmarkSearch(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, err := Search(context.Background(), 1002, 2004, 22, 1, 0, true, nil)
+		if err != nil {
+			b.Fatalf("expected no errors:%v", err)
+		}
+	}
+}

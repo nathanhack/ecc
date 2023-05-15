@@ -2,9 +2,10 @@ package internal
 
 import (
 	"context"
-	mat "github.com/nathanhack/sparsemat"
 	"strconv"
 	"testing"
+
+	mat "github.com/nathanhack/sparsemat"
 )
 
 func TestGaussianJordanEliminationGF2(t *testing.T) {
@@ -32,7 +33,7 @@ func TestGaussianJordanEliminationGF2(t *testing.T) {
 				}
 			} else {
 				if gen != nil {
-					t.Fatalf("expecte nil but found \n%v\n", gen)
+					t.Fatalf("expected nil but found \n%v\n", gen)
 				}
 			}
 		})

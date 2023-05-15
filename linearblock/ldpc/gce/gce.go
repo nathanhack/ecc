@@ -62,7 +62,7 @@ iterLoop:
 			//next we need to special cases need for "force"
 			if !finished {
 				if !state.cn.Exhausted() {
-					logrus.Debugf("unable to exhaust checknodes, checknodes must be exhausted for succesful search")
+					logrus.Debugf("unable to exhaust checknodes, checknodes must be exhausted for successful search")
 					continue
 				}
 				if !force {
@@ -72,14 +72,17 @@ iterLoop:
 				gceLdpcRunnerForce(ctx, state, girth)
 			}
 
+			// we use the CSR version for the next step it's faster
+			H := mat.CSRMatCopy(state.H)
+
 			// at this point we have a state that is "completed"
-			order, g := internal.NewFromH(ctx, state.H, threads)
+			order, g := internal.NewFromH(ctx, H, threads)
 			if order == nil {
 				continue
 			}
 
 			state.lb = &linearblock.LinearBlock{
-				H: state.H,
+				H: H,
 				Processing: &linearblock.Systemic{
 					HColumnOrder: order,
 					G:            g,
@@ -135,8 +138,8 @@ func gceLdpcRunnerForce(ctx context.Context, state *gceState, girth int) {
 	if !state.vn.Exhausted() {
 		//we basically find places for all the vn's to dangle (not ideal)
 		sort.Slice(state.cn.old, func(i, j int) bool {
-			a := state.H.Row(i).HammingWeight()
-			b := state.H.Row(j).HammingWeight()
+			a := state.H.Row(state.cn.old[i]).HammingWeight()
+			b := state.H.Row(state.cn.old[j]).HammingWeight()
 			return a < b
 		})
 
@@ -181,7 +184,7 @@ func (s *gceState) Cmp(state *gceState) int {
 
 func (s *gceState) Copy() *gceState {
 	return &gceState{
-		H:  mat.CSRMatCopy(s.H),
+		H:  mat.DOKMatCopy(s.H),
 		cn: s.cn.Copy(),
 		vn: s.vn.Copy(),
 		lb: nil,
@@ -225,7 +228,7 @@ func gceLdpcRunner(ctx context.Context, state *gceState, girth int) error {
 			//this occurs when there aren't "enough" cycles to provide opinions
 			return fmt.Errorf("failed to find two check nodes to exhaust check nodes (%v), this can happen randomly but frequently happens when the matrix is too small for the requested girth", state.cn.Len())
 		}
-		//TODO handle the case when state.vn.Exhausted() has occured before state.cn.Exhausted()
+		//TODO handle the case when state.vn.Exhausted() has occurred before state.cn.Exhausted()
 		connect(c1, c2, h, state)
 		select {
 		case <-ctx.Done():
@@ -367,8 +370,8 @@ func (n *Nodes) PopAll() {
 func findTwoNodes(H mat.SparseMat, checkIndices []int, dist int) (checkNode, otherNode int, success bool) {
 	//we want to start with nodes have the smallest weight
 	sort.Slice(checkIndices, func(i, j int) bool {
-		a := H.Row(i).HammingWeight()
-		b := H.Row(j).HammingWeight()
+		a := H.Row(checkIndices[i]).HammingWeight()
+		b := H.Row(checkIndices[j]).HammingWeight()
 		return a < b
 	})
 
@@ -388,7 +391,7 @@ func getNodeAtDistFromCheck(checkIndex, atLeastDist int, H mat.SparseMat) (nodeI
 	variableNodeHistory := make(map[int]bool)
 	currentLevel := make(map[int]bool)
 
-	// first we save the current node in history and set it to the curren level
+	// first we save the current node in history and set it to the current level
 	checkNodeHistory[checkIndex] = true
 	currentLevel[checkIndex] = false // false if it's a check, true for variable node
 
