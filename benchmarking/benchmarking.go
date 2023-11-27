@@ -82,7 +82,7 @@ func BenchmarkBSCContinueStats(ctx context.Context,
 		bar = pb.StartNew(trialsToRun)
 	}
 
-	pool := threadpool.New(ctx, threads, trialsToRun)
+	pool := threadpool.New(ctx, threads)
 	statsMux := sync.Mutex{}
 
 	trial := func(i int) {
@@ -159,10 +159,10 @@ func BenchmarkBECContinueStats(
 
 	var bar *pb.ProgressBar
 	if showProgressBar {
-		bar = pb.StartNew(trialsToRun)
+		bar = pb.Full.Start(trialsToRun)
 	}
 
-	pool := threadpool.New(ctx, threads, trialsToRun)
+	pool := threadpool.New(ctx, threads)
 	statsMux := sync.Mutex{}
 
 	trial := func(i int) {
@@ -241,7 +241,7 @@ func BenchmarkBPSKContinueStats(ctx context.Context,
 	if showProgress {
 		bar = pb.StartNew(trialsToRun)
 	}
-	pool := threadpool.New(ctx, threads, trialsToRun)
+	pool := threadpool.New(ctx, threads)
 	statsMux := sync.Mutex{}
 
 	trial := func(i int) {

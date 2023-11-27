@@ -2,9 +2,9 @@ package bec
 
 import (
 	"context"
+	crand "crypto/rand"
+	"fmt"
 	"math"
-	"math/rand"
-	"sync"
 
 	"github.com/nathanhack/ecc/benchmarking"
 	"github.com/nathanhack/ecc/linearblock"
@@ -12,7 +12,7 @@ import (
 	mat "github.com/nathanhack/sparsemat"
 )
 
-const bitLimit = 64
+const bitLimit = 30
 
 func RunBEC(ctx context.Context,
 	l *linearblock.LinearBlock,
@@ -21,37 +21,40 @@ func RunBEC(ctx context.Context,
 	previousStats benchmarking.Stats,
 	checkpoints benchmarking.Checkpoints,
 	showProgressBar bool) benchmarking.Stats {
-	messageHistory := make(map[string]bool)
-	messageHistoryMux := sync.RWMutex{}
-	messageHistoryMax := math.Pow(2, float64(l.MessageLength()))
 
 	createMessage := func(trial int) mat.SparseVector {
 		message := mat.CSRVec(l.MessageLength())
-		messageHistoryMux.RLock()
-		_, has := messageHistory[message.String()]
-		messageHistoryMux.RUnlock()
-		for has {
-			reset := false
-			for i := 0; i < l.MessageLength(); i++ {
-				message.Set(i, rand.Intn(2))
-			}
-			messageHistoryMux.RLock()
-			_, has = messageHistory[message.String()]
-			reset = float64(len(messageHistory)) >= messageHistoryMax
-			messageHistoryMux.RUnlock()
 
-			if reset {
-				messageHistoryMux.Lock()
-				messageHistory = make(map[string]bool)
-				messageHistoryMux.Unlock()
+		// if the size of the message is small enough we'll track everything
+		if l.MessageLength() <= bitLimit {
+			target := trial % ((1 << l.MessageLength()) - 1)
+			for i := 0; i < l.MessageLength(); i++ {
+				if target&1<<i > 0 {
+					message.Set(i, 1)
+				} else {
+					message.Set(i, 0)
+				}
+			}
+			return message
+		}
+
+		// if not small enough to track everything then we'll use some crypto rand
+		// to make our messages
+		bs := make([]byte, int(math.Ceil(float64(l.MessageLength())/8)))
+
+		n, err := crand.Read(bs)
+		if err != nil {
+			panic(fmt.Sprintf("random message error: %v", err))
+		} else if n != len(bs) {
+			panic(fmt.Sprintf("random message expected %v found %v", len(bs), n))
+		}
+
+		for j, b := range bs {
+			for i := 0; i < 8 && j*8+i < l.MessageLength(); i++ {
+				message.Set(j*8+i, int((b>>i)&1))
 			}
 		}
-		messageHistoryMux.Lock()
-		//when the message is relatively small we'll keep track so we don't have dups
-		if message.Len() < bitLimit || message.IsZero() {
-			messageHistory[message.String()] = true
-		}
-		messageHistoryMux.Unlock()
+
 		return message
 	}
 

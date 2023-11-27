@@ -4,6 +4,7 @@ import (
 	"github.com/nathanhack/ecc/cmd/internal/tools/bec/simple"
 	"github.com/nathanhack/ecc/cmd/internal/tools/bsc/dwbf"
 	"github.com/nathanhack/ecc/cmd/internal/tools/bsc/gallager"
+	"github.com/nathanhack/ecc/cmd/internal/tools/chart"
 	"github.com/nathanhack/ecc/cmd/internal/tools/csv"
 
 	"github.com/spf13/cobra"
@@ -91,6 +92,15 @@ var toolsCSVCmd = &cobra.Command{
 	Run:     csv.CSVRun,
 }
 
+// toolsChartCmd represents the csv command
+var toolsChartCmd = &cobra.Command{
+	Use:     "chart RESULTS_JSON [RESULTS_JSON] ...",
+	Aliases: []string{"ch"},
+	Short:   "Render a html page showing results",
+	Long:    `Render a html page showing results`,
+	Run:     chart.ChartRun,
+}
+
 func init() {
 	rootCmd.AddCommand(toolsCmd)
 	toolsCmd.AddCommand(toolsChansimCmd)
@@ -125,4 +135,7 @@ func init() {
 	toolsCSVCmd.Flags().StringVarP(&csv.OutputFile, "output", "o", "results.csv", "filename of the combined csv")
 	toolsCSVCmd.Flags().BoolVarP(&csv.MessageError, "message", "m", false, "outputs the MessageError instead of CodewordError or ParityError")
 	toolsCSVCmd.Flags().BoolVarP(&csv.ParityError, "parity", "p", false, "outputs the ParityError instead of CodewordError or MessageError")
+
+	toolsResultsCmd.AddCommand(toolsChartCmd)
+	toolsChartCmd.Flags().StringVarP(&chart.OutputFile, "output", "o", "results.html", "filename of the combined results in a html page")
 }

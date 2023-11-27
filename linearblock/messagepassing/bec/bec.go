@@ -14,10 +14,8 @@ type BECFlippingAlg interface {
 
 func Flipping(alg BECFlippingAlg, codeword []ErasureBit) (result []ErasureBit) {
 	done := false
-	result = make([]ErasureBit, len(codeword))
-	for i := 0; i < len(codeword); i++ {
-		result[i] = codeword[i]
-	}
+	result = codeword
+
 	for !done {
 		result, done = alg.Flip(result)
 	}

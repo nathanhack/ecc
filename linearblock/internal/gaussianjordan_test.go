@@ -25,7 +25,7 @@ func TestGaussianJordanEliminationGF2(t *testing.T) {
 	for i, test := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 
-			gen, _ := GaussianJordanEliminationGF2(context.Background(), test.input, 0)
+			gen, _,_ := GaussianJordanEliminationGF2(context.Background(), test.input, 3)
 
 			if test.expected != nil {
 				if !test.expected.Equals(gen) {

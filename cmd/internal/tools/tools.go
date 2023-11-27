@@ -61,7 +61,15 @@ func (s *SimulationStats) UnmarshalJSON(bytes []byte) error {
 }
 
 func Md5Sum(H mat.SparseMat) string {
-	return fmt.Sprintf("%x", md5.Sum([]byte(H.String())))
+	rows, _ := H.Dims()
+
+	m := md5.New()
+
+	for r := 0; r < rows; r++ {
+		m.Write([]byte(fmt.Sprint(H.Row(r).NonzeroArray())))
+	}
+
+	return fmt.Sprintf("%x", m.Sum(nil))
 }
 
 func LoadLinearBlockECC(filepath string) (*linearblock.LinearBlock, error) {

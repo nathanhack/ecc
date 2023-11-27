@@ -2,13 +2,14 @@ package linearblock
 
 import (
 	"context"
-	mat "github.com/nathanhack/sparsemat"
-	"github.com/nathanhack/threadpool"
 	"math"
 	"sync"
+
+	mat "github.com/nathanhack/sparsemat"
+	"github.com/nathanhack/threadpool"
 )
 
-//CalculateGirthLowerBoundByEdges returns a bool if true it is possible for the matrix to be
+// CalculateGirthLowerBoundByEdges returns a bool if true it is possible for the matrix to be
 // free of all cycles C_i  where i \in 3<=i<=minGirth. If false, it is impossible to
 // be free of all cycles C_i.
 func CalculateGirthLowerBoundByEdges(m mat.SparseMat, minGirth int) bool {
@@ -33,56 +34,55 @@ type girthNode struct {
 	parentIndex int
 }
 
-//CalculateGirth calculates the girth of the tanner csv induced by m.
+// CalculateGirth calculates the girth of the tanner csv induced by m.
 // threads specifies the number of threads to use if <=0 will use runtime.NumCPU()
-func CalculateGirth(m mat.SparseMat, threads int) int {
-	return CalculateGirthLowerBound(m, -1, threads)
+func CalculateGirth(ctx context.Context, m mat.SparseMat, threads int) int {
+	return CalculateGirthLowerBound(ctx, m, -1, threads)
 }
 
-//CalculateGirthLowerBound returns the length of the smallest cycle.
+// CalculateGirthLowerBound returns the length of the smallest cycle.
 // It searches for cycles with a length <= smallestGirth. If no cycles are found
 // that are smaller or equal to smallestGirth then it returns -1.
 // threads specifies the number of threads to use if <=0 will use runtime.NumCPU()
-func CalculateGirthLowerBound(m mat.SparseMat, smallestGirth, threads int) int {
+func CalculateGirthLowerBound(ctx context.Context, m mat.SparseMat, smallestGirth, threads int) int {
 	if smallestGirth != -1 && (smallestGirth < 4 || smallestGirth%2 != 0) {
 		panic("smallestGirth == -1 or smallestGirth must be a even number >=4")
 	}
 
 	rows, _ := m.Dims()
 
-	pool := threadpool.New(context.Background(), threads, rows)
-	calulated := -1
+	pool := threadpool.New(ctx, threads)
+	calculated := -1
 	mux := sync.RWMutex{}
 	for i := 0; i < rows; i++ {
 		index := i //
 		pool.Add(func() {
-
 			mux.RLock()
-			g := CalculateCycleLowerBound(m, index, smallestGirth)
+			g := CalculateCycleLowerBound(ctx, m, index, smallestGirth)
 			mux.RUnlock()
 
 			mux.Lock()
 			if g > 0 && (g <= smallestGirth || smallestGirth == -1) {
 				smallestGirth = g
-				calulated = g
+				calculated = g
 			}
 			mux.Unlock()
 		})
 	}
 	pool.Wait()
-	return calulated
+	return calculated
 }
 
-//HasGirthSmallerThan will search for cycle smaller than the given cycleLen.
+// HasGirthSmallerThan will search for cycle smaller than the given cycleLen.
 // Return true if it found a cycle smaller than cycleLen, else returns false.
 // threads specifies the number of threads to use if <=0 will use runtime.NumCPU()
-func HasGirthSmallerThan(m mat.SparseMat, cycleLen, threads int) bool {
+func HasGirthSmallerThan(ctx context.Context, m mat.SparseMat, cycleLen, threads int) bool {
 	if cycleLen != -1 && cycleLen < 4 {
 		panic("cycleLen == -1 or cycleLen >=4 required")
 	}
 
 	rows, _ := m.Dims()
-	pool := threadpool.New(context.Background(), threads, rows)
+	pool := threadpool.New(ctx, threads)
 	smaller := false
 	mux := sync.RWMutex{}
 	for i := 0; i < rows; i++ {
@@ -91,10 +91,10 @@ func HasGirthSmallerThan(m mat.SparseMat, cycleLen, threads int) bool {
 			mux.RLock()
 			if smaller {
 				// nothing to do here
-				defer mux.RUnlock()
+				mux.RUnlock()
 				return
 			}
-			g := CalculateCycleLowerBound(m, index, cycleLen)
+			g := CalculateCycleLowerBound(ctx, m, index, cycleLen)
 
 			mux.RUnlock()
 			mux.Lock()
@@ -108,10 +108,10 @@ func HasGirthSmallerThan(m mat.SparseMat, cycleLen, threads int) bool {
 	return smaller
 }
 
-//CalculateCycleLowerBound runs a BFS starting at the checkIndex check node, for maxGirth/2 steps
+// CalculateCycleLowerBound runs a BFS starting at the checkIndex check node, for maxGirth/2 steps
 // if maxGirth ==-1 it will search until it finds a cycle
 // in either case it returns the length of the cycle (up to maxGirth) or -1 if no cycle was found
-func CalculateCycleLowerBound(m mat.SparseMat, checkIndex, maxGirth int) int {
+func CalculateCycleLowerBound(ctx context.Context, m mat.SparseMat, checkIndex, maxGirth int) int {
 	if maxGirth == -1 {
 		maxGirth = math.MaxInt64
 	}
@@ -125,9 +125,9 @@ func CalculateCycleLowerBound(m mat.SparseMat, checkIndex, maxGirth int) int {
 	for _, i := range m.Row(checkIndex).NonzeroArray() {
 		hop[i] = girthNode{parentIndex: checkIndex}
 	}
-	//if there was only one variable node then there is no way
+	//if there was only one variable node (or less than 1) then there is no way
 	// this will have a loop
-	if len(hop) == 1 {
+	if len(hop) <= 1 {
 		return -1
 	}
 	history = append(history, hop)

@@ -2,12 +2,12 @@ package internal
 
 import (
 	"context"
+	"os"
+
 	"github.com/cheggaaa/pb/v3"
 	mat "github.com/nathanhack/sparsemat"
 	"github.com/nathanhack/threadpool"
 	"github.com/sirupsen/logrus"
-	"os"
-	"sync"
 )
 
 func swapColOrder(i, j int, colIndices []int) {
@@ -37,6 +37,7 @@ func findPivotColGF2(H mat.SparseMat, forRow int) int {
 }
 
 func GaussianJordanEliminationGF2(ctx context.Context, H mat.SparseMat, threads int) (mat.SparseMat, []int) {
+	logrus.Debugf("Preparing matrix for Gaussian-Jordan Elimination")
 	rows, cols := H.Dims()
 	result := mat.CSRMatCopy(H)
 	columnSwapHistory := make([]int, cols)
@@ -46,28 +47,24 @@ func GaussianJordanEliminationGF2(ctx context.Context, H mat.SparseMat, threads 
 		columnSwapHistory[c] = c
 	}
 
-	if cols < rows {
-		//null space must equal the rank
-		return nil, nil
-	}
-
 	//to fail fast we first do the lower triangle then do the upper
-	if lowerTrianglar(ctx, rows, result, columnSwapHistory, threads, logrus.GetLevel() == logrus.DebugLevel) != rows {
-		logrus.Debugf("All rows not linearly independant")
-		return nil, nil
+	rank := lowerTriangular(ctx, rows, result, columnSwapHistory, threads, logrus.GetLevel() == logrus.DebugLevel)
+	if rank != rows {
+		logrus.Warnf("Only %v rows of %v linearly independent (diff:%v)", rank, rows, rank-rows)
 	}
 
 	// at this point we know we had all linearly independent rows!
 	// and the lower triangle is done so we'll take care of the top
-	if !upperTrianglar(ctx, rows, result, threads, logrus.GetLevel() == logrus.DebugLevel) {
-		return nil, nil
-	}
+	upperTriangular(ctx, rows, result, threads, logrus.GetLevel() == logrus.DebugLevel)
 
 	logrus.Debugf("Gaussian-Jordan Elimination complete")
+	if rank != rows {
+		result = result.Slice(0, 0, rank, cols)
+	}
 	return result, columnSwapHistory
 }
 
-func upperTrianglar(ctx context.Context, rows int, H mat.SparseMat, threads int, showProgressBar bool) bool {
+func upperTriangular(ctx context.Context, rows int, H mat.SparseMat, threads int, showProgressBar bool) bool {
 	bar := pb.Full.New(rows)
 	logrus.Debugf("Reduced row echelon")
 	bar.Set("prefix", "Processing Row ")
@@ -83,7 +80,9 @@ func upperTrianglar(ctx context.Context, rows int, H mat.SparseMat, threads int,
 			return false
 		default:
 		}
-		eliminateOtherRows(ctx, r, H, threads)
+		if H.At(r, r) > 0 {
+			eliminateOtherRowsParallel(ctx, r, H, threads)
+		}
 	}
 	bar.SetTemplateString(`{{string . "prefix"}}{{counters . }}{{string . "suffix"}}`)
 	bar.Set("suffix", " Done")
@@ -112,26 +111,18 @@ func pivotsSwapReturn(H mat.SparseMat, rowIndex int, columnsSwapHistory []int) [
 	return pivots
 }
 
-func eliminateOtherRows(ctx context.Context, rowIndex int, result mat.SparseMat, threads int) {
-	//create a pool with 1 less pivot
+func eliminateOtherRowsParallel(ctx context.Context, rowIndex int, result mat.SparseMat, threads int) {
 	pivots := result.Column(rowIndex).NonzeroArray()
-	pool := threadpool.New(ctx, threads, len(pivots)-1)
-	rrow := result.Row(rowIndex)
-	mut := sync.RWMutex{}
+	pool := threadpool.New(ctx, threads)
 
-	//for all pivots except the one equal to r subtract it (in GF2 subtract is add)
+	//for all pivots != rowIndex subtract it (in GF2 subtract is add)
+	// we use AddRows without a mutex, this will work only for CSRMat
 	for _, index := range pivots {
 		pIndex := index
 		if index != rowIndex {
 			pool.Add(func() {
 				func(p int) {
-					mut.RLock()
-					prow := result.Row(p)
-					mut.RUnlock()
-					prow.Add(prow, rrow)
-					mut.Lock()
-					result.SetRow(p, prow)
-					mut.Unlock()
+					result.AddRows(rowIndex, p, p)
 				}(pIndex)
 			})
 		}
@@ -139,29 +130,21 @@ func eliminateOtherRows(ctx context.Context, rowIndex int, result mat.SparseMat,
 	pool.Wait()
 }
 
-func eliminateLowerRows(ctx context.Context, rowIndex int, result mat.SparseMat, threads int) {
-	//create a pool with 1 less pivot
+func eliminateLowerRowsParallel(ctx context.Context, rowIndex int, result mat.SparseMat, threads int) {
 	pivots := result.Column(rowIndex).NonzeroArray()
-	pool := threadpool.New(ctx, threads, len(pivots))
-	rrow := result.Row(rowIndex)
-	mut := sync.RWMutex{}
+	pool := threadpool.New(ctx, threads)
 
-	//for all pivots except the one equal to r subtract it (in GF2 subtract is add)
+	//for all pivots > rowIndex subtract it (in GF2 subtract is add)
+	// we use AddRows without a mutex, this will work only for CSRMat
 	for _, index := range pivots {
 		pIndex := index
-		pool.Add(func() {
-			if pIndex > rowIndex {
+		if pIndex > rowIndex {
+			pool.Add(func() {
 				func(p int) {
-					mut.RLock()
-					prow := result.Row(p)
-					mut.RUnlock()
-					prow.Add(prow, rrow)
-					mut.Lock()
-					result.SetRow(p, prow)
-					mut.Unlock()
+					result.AddRows(rowIndex, p, p)
 				}(pIndex)
-			}
-		})
+			})
+		}
 	}
 	pool.Wait()
 }
@@ -181,10 +164,10 @@ func CalculateRank(ctx context.Context, H mat.SparseMat, threads int, showProgre
 	}
 	columnSwapHistory := make([]int, cols)
 
-	return lowerTrianglar(ctx, min, tmp, columnSwapHistory, threads, showProgressBar)
+	return lowerTriangular(ctx, min, tmp, columnSwapHistory, threads, showProgressBar)
 }
 
-func lowerTrianglar(ctx context.Context, rows int, H mat.SparseMat, columnSwapHistory []int, threads int, showProgressBar bool) int {
+func lowerTriangular(ctx context.Context, rows int, H mat.SparseMat, columnSwapHistory []int, threads int, showProgressBar bool) int {
 	bar := pb.Full.New(rows)
 	logrus.Debugf("Row echelon")
 	bar.Set("prefix", "Processing Row ")
@@ -192,7 +175,7 @@ func lowerTrianglar(ctx context.Context, rows int, H mat.SparseMat, columnSwapHi
 	if showProgressBar {
 		bar.Start()
 	}
-
+	rowsWithPivots := 0
 	for r := 0; r < rows; r++ {
 		select {
 		case <-ctx.Done():
@@ -204,8 +187,9 @@ func lowerTrianglar(ctx context.Context, rows int, H mat.SparseMat, columnSwapHi
 		//first find pivots for the column equal to r
 		pivots := pivotsSwapReturn(H, r, columnSwapHistory)
 		if pivots == nil {
-			return r
+			continue
 		}
+		rowsWithPivots++
 
 		//when here we know pivots have values and the last one
 		//should be a row to switch with
@@ -215,12 +199,42 @@ func lowerTrianglar(ctx context.Context, rows int, H mat.SparseMat, columnSwapHi
 		// now the rth row has a pivot in the rth row and rth column
 		// so we now subtract it from all other rows with a 1
 		// in the rth column
-		eliminateLowerRows(ctx, r, H, threads)
+		eliminateLowerRowsParallel(ctx, r, H, threads)
+	}
+
+	if rowsWithPivots != rows {
+		logrus.Debugf("Consolidating %v linear dependent rows to bottom of matrix", rows-rowsWithPivots)
+		// if true we reorder so that diagonal has all the ones grouped together
+		// pushed to the top(first rows). As a consequence of this it means
+		// linearly dependant rows are at the bottom (last rows).
+		currRow := 0
+	main:
+		for currRow > rows {
+			if H.At(currRow, currRow) == 0 {
+				// find the next that  isn't zero to replace
+				replaceRow := currRow + 1
+				for replaceRow < rows {
+					if H.At(replaceRow, replaceRow) > 0 {
+						break
+					}
+				}
+				if replaceRow == rows {
+					// everything was zeros nothing to do matrix is ordered
+					break main
+				}
+
+				// ok we swap these rows then also swap the columns
+				// the row swap doesn't have to be tracked but the columns do
+				H.SwapRows(currRow, replaceRow)
+				H.SwapColumns(currRow, replaceRow) //this functions for CSR has a problem
+				swapColOrder(currRow, replaceRow, columnSwapHistory)
+			}
+		}
 	}
 
 	bar.SetTemplateString(`{{string . "prefix"}}{{counters . }}{{string . "suffix"}}`)
 	bar.Set("suffix", " Done")
 	bar.Finish()
 
-	return rows
+	return rowsWithPivots
 }

@@ -1,6 +1,7 @@
 package linearblock
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -8,27 +9,28 @@ import (
 	"github.com/nathanhack/ecc/linearblock/internal"
 	"github.com/nathanhack/ecc/linearblock/messagepassing/bec"
 	mat "github.com/nathanhack/sparsemat"
+	"github.com/sirupsen/logrus"
 )
 
-type Systemic struct {
+type Systematic struct {
 	HColumnOrder []int
 	G            mat.SparseMat
 }
 
-// LinearBlock contains matrices for the original H matrix and the systemic G generator.
+// LinearBlock contains matrices for the original H matrix and the systematic G generator.
 type LinearBlock struct {
 	H          mat.SparseMat //the original H(parity) matrix
-	Processing *Systemic     // contains systemic generator matrix
+	Processing *Systematic   // contains systematic generator matrix
 }
 
 // // For JSON unmarshalling
-type systemic struct {
+type systematic struct {
 	HColumnOrder []int
 	G            mat.CSRMatrix
 }
 type linearblock struct {
 	H          mat.CSRMatrix
-	Processing *systemic
+	Processing *systematic
 }
 
 // UnmarshalJSON is needed because LinearBlock has a mat.SparseMat and requires special handling
@@ -44,7 +46,7 @@ func (l *LinearBlock) UnmarshalJSON(bytes []byte) error {
 		return nil
 	}
 
-	l.Processing = &Systemic{
+	l.Processing = &Systematic{
 		HColumnOrder: lb.Processing.HColumnOrder,
 		G:            &lb.Processing.G,
 	}
@@ -111,11 +113,11 @@ func (l *LinearBlock) MessageLength() int {
 	return k
 }
 func (l *LinearBlock) ParitySymbols() int {
-	m, _ := l.H.Dims()
-	return m
+	k, n := l.Processing.G.Dims()
+	return n - k
 }
 func (l *LinearBlock) CodewordLength() int {
-	_, n := l.H.Dims()
+	_, n := l.Processing.G.Dims()
 	return n
 }
 func (l *LinearBlock) CodeRate() float64 {
@@ -186,7 +188,7 @@ func ToSystematicBE(codeword []bec.ErasureBit, ordering []int) []bec.ErasureBit 
 	if len(ordering) == 0 {
 		panic("ordering length must be >0")
 	}
-	if len(ordering) > 0 && len(codeword) != len(ordering) {
+	if len(codeword) != len(ordering) {
 		panic("vector length must equal ordering length")
 	}
 
@@ -226,4 +228,99 @@ func SystematicBESplit(codeword []bec.ErasureBit, block *LinearBlock) (message, 
 		panic("codeword length must block's codeword length")
 	}
 	return codeword[:block.MessageLength()], codeword[block.MessageLength():]
+}
+
+func ExtractAFromH(ctx context.Context, H mat.SparseMat, threads int) (A mat.SparseMat, columnOrdering []int) {
+
+	gje, ordering := internal.GaussianJordanEliminationGF2(ctx, H, threads)
+
+	m, N := gje.Dims()
+
+	logrus.Debug("Validating Row Reduced Matrix ")
+	//let's check if we got a [ I, * ] format
+	actual := gje.Slice(0, 0, m, m)
+	ident := mat.CSRIdentity(m)
+	if !actual.Equals(ident) {
+		logrus.Errorf("failed to create transform H matrix into [I,*]")
+		return nil, nil
+	}
+
+	//we need to convert gje from [ I, A] to [ A, I] (while keeping track)
+	// and then extract A
+
+	// first the keeping track part
+	columnOrdering = make([]int, len(ordering))
+	copy(columnOrdering[0:N-m], ordering[m:N])
+	copy(columnOrdering[N-m:N], ordering[0:m])
+
+	logrus.Debug("Extracting A Matrix from Row Reduced Matrix")
+	//finally extract the A
+	A = gje.Slice(0, m, m, N-m)
+
+	return A, columnOrdering
+}
+
+// CreateHGPair creates a derived parity check matrix and G generator matrix from the parity matrix H.
+// Note: the LinearBlock parity matrix's columns may be swapped.
+func CreateHGPair(ctx context.Context, H mat.SparseMat, threads int) (HColumnOrder []int, G mat.SparseMat, parityCheckMatrix mat.SparseMat) {
+	hRows, hCols := H.Dims()
+	if hRows >= hCols {
+		panic(fmt.Sprintf("H matrix shape == (rows, cols) where rows < cols required found rows:%v >= cols:%v", hRows, hCols))
+	}
+	// So we now take the current H matrix
+	// convert H=[*] -> H=[A,I]
+	// then extract out the A and keep track of columnSwaps during it
+	logrus.Debugf("Creating generator matrix from H matrix")
+	A, columnSwaps := ExtractAFromH(ctx, H, threads)
+	if A == nil {
+		logrus.Debugf("Unable to create generator matrix from H")
+		return nil, nil, nil
+	}
+
+	AT := A.T() // transpose of A
+	atRows, atCols := AT.Dims()
+
+	logrus.Debug("Creating Generator Matrix")
+	//Next using A make G=[I, A^T] where A^T is the transpose of A
+	G = mat.DOKMat(atRows, atRows+atCols)
+	G.SetMatrix(mat.CSRIdentity(atRows), 0, 0)
+	G.SetMatrix(AT, 0, atRows)
+
+	aRows, aCols := A.Dims()
+	if aRows == hRows {
+		logrus.Debugf("Generator Matrix complete")
+		return columnSwaps, G, H
+	}
+
+	//well the H matrix's ranks != null space
+	// so we need to create a parityCheckMatrix H=[A,I]
+	logrus.Debugf("H Parity Check Matrix Reconstitution")
+	parityCheckMatrix = mat.DOKMat(aRows, aRows+aCols)
+	parityCheckMatrix.SetMatrix(A, 0, 0)
+	parityCheckMatrix.SetMatrix(mat.CSRIdentity(aRows), 0, aCols)
+
+	//with this change the columnSwap no longer holds so we reset the swaps
+	columnSwaps = make([]int, aRows+aCols)
+	for i := range columnSwaps {
+		columnSwaps[i] = i
+	}
+
+	logrus.Debugf("H Parity Check Matrix Reconstitution Complete")
+	return columnSwaps, G, parityCheckMatrix
+}
+
+func SystematicLinearBlock(ctx context.Context, H mat.SparseMat, threads int) *LinearBlock {
+	// at this point we have a state that is "completed"
+	order, g, pcm := CreateHGPair(ctx, H, threads)
+	if order == nil {
+		return nil
+	}
+
+	return &LinearBlock{
+		H: pcm,
+		Processing: &Systematic{
+			HColumnOrder: order,
+			G:            g,
+		},
+	}
 }

@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/nathanhack/ecc/linearblock"
-	"github.com/nathanhack/ecc/linearblock/internal"
 	mat "github.com/nathanhack/sparsemat"
 )
 
@@ -32,16 +31,10 @@ func New(ctx context.Context, paritySymbols int, threads int) (*linearblock.Line
 		H.SetColumn(i-1, vec)
 	}
 
-	order, g := internal.NewFromH(ctx, H, threads)
-	if order == nil {
+	result := linearblock.SystematicLinearBlock(ctx, H, threads)
+	if result == nil {
 		return nil, fmt.Errorf("unable to create generator for H matrix")
 	}
 
-	return &linearblock.LinearBlock{
-		H: H,
-		Processing: &linearblock.Systemic{
-			HColumnOrder: order,
-			G:            g,
-		},
-	}, nil
+	return result, nil
 }

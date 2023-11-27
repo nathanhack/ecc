@@ -60,7 +60,7 @@ var BecRun = func(cmd *cobra.Command, args []string) {
 		return
 	}
 	if data.ECCInfo != tools.Md5Sum(ecc.H) {
-		fmt.Printf("csv laoded does not match the ECC")
+		fmt.Printf("csv loaded does not match the ECC")
 		return
 	}
 

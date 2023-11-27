@@ -6,52 +6,80 @@ import (
 )
 
 type Simple struct {
-	H     mat.SparseMat
-	cache [][]int
+	H           mat.SparseMat
+	checkToVars [][]int
+	varToChecks [][]int
 }
 
 func (s *Simple) Flip(currentCodeword []bec.ErasureBit) (nextCodeword []bec.ErasureBit, done bool) {
 	if s.H == nil {
 		panic("Simple BEC flipping algorithm must have the H parity matrix set before using")
 	}
-	if s.cache == nil {
+	if s.checkToVars == nil {
 		s.init()
 	}
 
-	nextCodeword = copyErasureBits(currentCodeword)
-
-	if !hasErasedBits(nextCodeword) {
-		return nextCodeword, true
-	}
-
+	nextCodeword = make([]bec.ErasureBit, len(currentCodeword))
+	copy(nextCodeword, currentCodeword)
+	erasedBits := getErasedIndices(nextCodeword)
 	progress := false
-	for _, B := range s.cache {
-		if progressM(nextCodeword, B) {
-			progress = true
+
+	for len(erasedBits) > 0 {
+
+		progress = false
+
+		checksCompleted := make(map[int]bool)
+		for _, erasedBit := range erasedBits {
+			for _, row := range s.varToChecks[erasedBit] {
+				if _, has := checksCompleted[row]; has {
+					continue
+				}
+
+				if progressM(nextCodeword, s.checkToVars[row]) {
+					progress = true
+				}
+			}
 		}
+
+		if !progress {
+			return nextCodeword, true
+		}
+
+		erasedBits = getErasedIndices(nextCodeword)
 	}
 
-	done = !(progress && hasErasedBits(currentCodeword))
-	return nextCodeword, done
+	return nextCodeword, !progress
 }
 
 func (s *Simple) init() {
-	if s.cache != nil {
+	if s.checkToVars != nil {
 		return
 	}
-	rows, _ := s.H.Dims()
-	s.cache = make([][]int, rows)
-	for i := range s.cache {
-		s.cache[i] = s.H.Row(i).NonzeroArray()
+	rows, cols := s.H.Dims()
+
+	s.varToChecks = make([][]int, cols)
+	for v := range s.varToChecks {
+		s.varToChecks[v] = make([]int, 0)
+	}
+
+	s.checkToVars = make([][]int, rows)
+	for c := range s.checkToVars {
+		s.checkToVars[c] = s.H.Row(c).NonzeroArray()
+		for _, v := range s.checkToVars[c] {
+			s.varToChecks[v] = append(s.varToChecks[v], c)
+		}
 	}
 }
 
-func copyErasureBits(m []bec.ErasureBit) []bec.ErasureBit {
-	M := make([]bec.ErasureBit, len(m))
+func getErasedIndices(m []bec.ErasureBit) []int {
+	erasedBits := make([]int, 0, len(m))
+
 	for i, r := range m {
-		M[i] = r
+		if r == bec.Erased {
+			erasedBits = append(erasedBits, i)
+		}
 	}
-	return M
+	return erasedBits
 }
 
 func progressM(M []bec.ErasureBit, B []int) bool {
@@ -78,13 +106,4 @@ func progressM(M []bec.ErasureBit, B []int) bool {
 	M[missing] = bec.ErasureBit(value % 2)
 
 	return true
-}
-
-func hasErasedBits(M []bec.ErasureBit) bool {
-	for i := 0; i < len(M); i++ {
-		if M[i] == bec.Erased {
-			return true
-		}
-	}
-	return false
 }

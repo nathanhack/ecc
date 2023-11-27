@@ -3,13 +3,14 @@ package benchmarking
 import (
 	"context"
 	"fmt"
+	"runtime"
+
 	"github.com/nathanhack/ecc/linearblock/hamming"
 	"github.com/nathanhack/ecc/linearblock/messagepassing/bec"
 	"github.com/nathanhack/ecc/linearblock/messagepassing/bec/iterative"
 	"github.com/nathanhack/ecc/linearblock/messagepassing/bitflipping/harddecision"
 	mat "github.com/nathanhack/sparsemat"
 	mat2 "gonum.org/v1/gonum/mat"
-	"runtime"
 )
 
 func ExampleBenchmarkBSC() {

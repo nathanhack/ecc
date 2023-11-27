@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
-	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -33,15 +32,8 @@ var GallagerRun = func(cmd *cobra.Command, args []string) {
 	} else {
 		logrus.SetLevel(logrus.InfoLevel)
 	}
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		sig := <-sigs
-		fmt.Println()
-		fmt.Println(sig)
-		cancel()
-	}()
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM)
+	defer cancel()
 
 	g, err := gallager.Search(ctx, int(Message), int(Wc), int(Wr), int(Smallest), int(Iter), int(Threads))
 	if err != nil {

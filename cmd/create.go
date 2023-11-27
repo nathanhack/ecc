@@ -4,6 +4,7 @@ import (
 	"github.com/nathanhack/ecc/cmd/internal/create/gallager"
 	"github.com/nathanhack/ecc/cmd/internal/create/gce"
 	"github.com/nathanhack/ecc/cmd/internal/create/hamming"
+	"github.com/nathanhack/ecc/cmd/internal/create/rcj"
 
 	"github.com/spf13/cobra"
 )
@@ -16,16 +17,16 @@ var createCmd = &cobra.Command{
 	Long:    `create provides the ability to make a new ECC from the list of built-in ECCs and save them so they can be used later by the tools.`,
 }
 
-// createlinearblockCmd represents the linearblock command
-var createlinearblockCmd = &cobra.Command{
+// createLinearblockCmd represents the linearblock command
+var createLinearblockCmd = &cobra.Command{
 	Use:     "linearblock",
 	Aliases: []string{"lb", "l"},
 	Short:   "creates linearblock ECCs",
 	Long:    `Creates linearblock ECCs.`,
 }
 
-// createldpcCmd represents the ldpc command
-var createldpcCmd = &cobra.Command{
+// createLdpcCmd represents the ldpc command
+var createLdpcCmd = &cobra.Command{
 	Use:     "ldpc",
 	Aliases: []string{"l"},
 	Short:   "creates LDPC",
@@ -61,12 +62,26 @@ var createHammingCmd = &cobra.Command{
 	Run:     hamming.HammingRun,
 }
 
+// createCRJCmd represents the rcj command
+var createRCJCmd = &cobra.Command{
+	Use:   "rcj OUTPUT_LDPC_JSON",
+	Short: "Creates a new RCJ based ECC",
+	Long:  `Creates a new RCJ based ECC..`,
+	Args:  cobra.ExactArgs(1),
+	Run:   rcj.RCJRun,
+}
+
 func init() {
 	rootCmd.AddCommand(createCmd)
-	createCmd.AddCommand(createlinearblockCmd)
-	createlinearblockCmd.AddCommand(createldpcCmd)
+	createCmd.AddCommand(createLinearblockCmd)
 
-	createldpcCmd.AddCommand(createGallagerCmd)
+	createLinearblockCmd.AddCommand(createHammingCmd)
+	createHammingCmd.Flags().UintVarP(&hamming.ParityBits, "parity", "p", 4, "the parity >=2, sets codeword size (cs) == 2^parity-1 and message size == cs-parity")
+	createHammingCmd.Flags().UintVarP(&hamming.Threads, "threads", "t", 0, "the number of threads to use; note 0 means use the number of cpus")
+
+	createLinearblockCmd.AddCommand(createLdpcCmd)
+
+	createLdpcCmd.AddCommand(createGallagerCmd)
 	createGallagerCmd.Flags().UintVarP(&gallager.Message, "message", "m", 1000, "the number of bits in the message")
 	createGallagerCmd.Flags().UintVarP(&gallager.Wc, "column", "c", 3, "the column weight (number of ones in the H matrix column) (>=3)")
 	createGallagerCmd.Flags().UintVarP(&gallager.Wr, "row", "r", 4, "the row weight (number of ones in the H matrix row) (column < row)")
@@ -75,7 +90,7 @@ func init() {
 	createGallagerCmd.Flags().UintVarP(&gallager.Threads, "threads", "t", 0, "the number of threads to use; note 0 means use the number of cpus")
 	createGallagerCmd.Flags().BoolVarP(&gallager.Verbose, "verbose", "v", false, "enable verbose info")
 
-	createldpcCmd.AddCommand(createGCECmd)
+	createLdpcCmd.AddCommand(createGCECmd)
 	createGCECmd.Flags().UintVarP(&gce.MessageSize, "message", "m", 1000, "the number of bits in the message")
 	createGCECmd.Flags().UintVarP(&gce.CodewordSize, "codeword", "c", 2000, "the number of bits for the whole codeword(message+ecc)")
 	createGCECmd.Flags().UintVarP(&gce.Girth, "girth", "g", 20, "the girth to use")
@@ -84,8 +99,10 @@ func init() {
 	createGCECmd.Flags().BoolVarP(&gce.Force, "force", "f", false, "to enable forcing")
 	createGCECmd.Flags().BoolVarP(&gce.Verbose, "verbose", "v", false, "enable verbose info")
 
-	createlinearblockCmd.AddCommand(createHammingCmd)
-	createHammingCmd.Flags().UintVarP(&hamming.ParityBits, "parity", "p", 4, "the parity >=2, sets codeword size (cs) == 2^parity-1 and message size == cs-parity")
-	createHammingCmd.Flags().UintVarP(&hamming.Threads, "threads", "t", 0, "the number of threads to use; note 0 means use the number of cpus")
-
+	createLdpcCmd.AddCommand(createRCJCmd)
+	createRCJCmd.Flags().UintVarP(&rcj.Count, "count", "c", 128, "the number of loops of with the requested girth")
+	createRCJCmd.Flags().UintVarP(&rcj.Girth, "girth", "g", 20, "the girth to use")
+	createRCJCmd.Flags().BoolVarP(&rcj.Force, "force", "f", false, "to enable forcing")
+	createRCJCmd.Flags().UintVarP(&rcj.Threads, "threads", "t", 0, "the number of threads to use; note 0 means use the number of cpus")
+	createRCJCmd.Flags().BoolVarP(&rcj.Verbose, "verbose", "v", false, "enable verbose info")
 }

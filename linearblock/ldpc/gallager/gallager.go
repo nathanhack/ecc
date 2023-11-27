@@ -4,12 +4,15 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"time"
 
 	"github.com/nathanhack/ecc/linearblock"
 	"github.com/nathanhack/ecc/linearblock/internal"
 	mat "github.com/nathanhack/sparsemat"
 	"github.com/sirupsen/logrus"
 )
+
+var random = rand.New(rand.NewSource(time.Now().Unix()))
 
 // GallagerRateInput takes in the message input size in bits (m), the column weight (wc), and row weight (wr)
 func Search(ctx context.Context, m, wc, wr, smallestCycleAllowed, maxIter, threads int) (lb *linearblock.LinearBlock, err error) {
@@ -70,7 +73,7 @@ func search(ctx context.Context, N, K, m, wc, iter, smallestCycleAllowed, thread
 		}
 		setSubH(H, sub, s)
 
-		calGirth := linearblock.CalculateGirthLowerBound(H, smallestCycleAllowed, threads)
+		calGirth := linearblock.CalculateGirthLowerBound(ctx, H, smallestCycleAllowed, threads)
 		if -1 < calGirth && calGirth < smallestCycleAllowed {
 			continue
 		}
@@ -86,18 +89,12 @@ func search(ctx context.Context, N, K, m, wc, iter, smallestCycleAllowed, thread
 	}
 	logrus.Debugf("Gallager H Matrix found")
 
-	order, g := internal.NewFromH(ctx, H, threads)
-	if order == nil {
+	gal := linearblock.SystematicLinearBlock(ctx, H, threads)
+	if gal == nil {
 		return iter, nil, fmt.Errorf("unable to create generator for H matrix")
 	}
 
-	return 0, &linearblock.LinearBlock{
-		H: H,
-		Processing: &linearblock.Systemic{
-			HColumnOrder: order,
-			G:            g,
-		},
-	}, nil
+	return 0, gal, nil
 }
 
 func permuteColumns(H mat.SparseMat) mat.SparseMat {
@@ -111,10 +108,8 @@ func permuteColumns(H mat.SparseMat) mat.SparseMat {
 	}
 
 	//shuffle them
-	rand.Shuffle(len(idx), func(i, j int) {
-		tmp := idx[i]
-		idx[i] = idx[j]
-		idx[j] = tmp
+	random.Shuffle(len(idx), func(i, j int) {
+		idx[i], idx[j] = idx[j], idx[i]
 	})
 
 	//now set the columns

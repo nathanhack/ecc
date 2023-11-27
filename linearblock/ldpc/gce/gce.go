@@ -7,7 +7,6 @@ import (
 
 	"github.com/cheggaaa/pb/v3"
 	"github.com/nathanhack/ecc/linearblock"
-	"github.com/nathanhack/ecc/linearblock/internal"
 	mat "github.com/nathanhack/sparsemat"
 	"github.com/sirupsen/logrus"
 )
@@ -72,22 +71,12 @@ iterLoop:
 				gceLdpcRunnerForce(ctx, state, girth)
 			}
 
-			// we use the CSR version for the next step it's faster
-			H := mat.CSRMatCopy(state.H)
-
 			// at this point we have a state that is "completed"
-			order, g := internal.NewFromH(ctx, H, threads)
-			if order == nil {
+			state.lb = linearblock.SystematicLinearBlock(ctx, state.H, threads)
+			if state.lb == nil {
 				continue
 			}
 
-			state.lb = &linearblock.LinearBlock{
-				H: H,
-				Processing: &linearblock.Systemic{
-					HColumnOrder: order,
-					G:            g,
-				},
-			}
 			best = state
 			bestCopy = tmpCopy
 
@@ -239,7 +228,7 @@ func gceLdpcRunner(ctx context.Context, state *gceState, girth int) error {
 
 	// step 3
 	logrus.Debugf("Step 3 of 4")
-	bar := pb.New(state.vn.Len())
+	bar := pb.StartNew(state.vn.Len())
 	for !state.vn.Exhausted() {
 		if logrus.GetLevel() == logrus.DebugLevel {
 			bar.Increment()
@@ -261,7 +250,7 @@ func gceLdpcRunner(ctx context.Context, state *gceState, girth int) error {
 	// step 4
 	logrus.Debugf("Step 4 of 4")
 	c1, v, success := findTwoNodes(state.H, state.cn.old, 2*x-1)
-	bar = pb.New(0)
+	bar = pb.StartNew(0)
 	for success {
 		if logrus.GetLevel() == logrus.DebugLevel {
 			bar.Increment()
